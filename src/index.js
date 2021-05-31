@@ -1,46 +1,41 @@
-const { ApolloServer } = require("apollo-server");
+const { ApolloServer, PubSub } = require("apollo-server");
 const { PrismaClient } = require("@prisma/client");
-
 const fs = require("fs");
 const path = require("path");
 
+const Query = require("./resolvers/Query");
+const Mutation = require("./resolvers/Mutation");
+const User = require("./resolvers/User");
+const Link = require("./resolvers/Link");
+const Subscription = require("./resolvers/Subscription");
+const Vote = require("./resolvers/Vote");
+
+const { getUserId } = require("./utils");
+
 const prisma = new PrismaClient();
+const pubsub = new PubSub();
 
 const typeDefs = fs.readFileSync(path.resolve(__dirname, "schema.graphql"), "utf-8");
 
 const resolvers = {
-  Query: {
-    info: () => `This is the API of a hackernews clone`,
-    // info: () => null,
-    feed: (parent, args, context) => {
-      return context.prisma.link.findMany();
-    },
-  },
-  Mutation: {
-    post: (parent, args) => {
-      const link = {
-        description: args.description,
-        url: args.url,
-      };
-      const newLink = context.prisma.link.create({
-        data: link,
-      });
-      return newLink;
-    },
-  },
-  Link: {
-    id: (parent) => parent.id,
-    description: (parent) => parent.description,
-    url: (parent) => parent.url,
-    urlShort: (parent) => new URL(parent.url).hostname,
-  },
+  Query,
+  Mutation,
+  Link,
+  User,
+  Subscription,
+  Vote,
 };
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: {
-    prisma,
+  context: ({ req }) => {
+    return {
+      ...req,
+      prisma,
+      pubsub,
+      userId: req && req.headers.authorization ? getUserId(req) : null,
+    };
   },
 });
 

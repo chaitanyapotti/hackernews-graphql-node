@@ -37,6 +37,20 @@ const server = new ApolloServer({
       userId: req && req.headers.authorization ? getUserId(req) : null,
     };
   },
+  subscriptions: {
+    onConnect: (connectionParams) => {
+      if (connectionParams.authToken) {
+        return {
+          prisma,
+          userId: getUserId(null, connectionParams.authToken),
+        };
+      } else {
+        return {
+          prisma,
+        };
+      }
+    },
+  },
 });
 
 server.listen().then(({ url }) => console.log(`Server is running on ${url}`));
